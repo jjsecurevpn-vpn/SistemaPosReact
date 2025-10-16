@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../contexts/NotificationContext';
 import Modal from '../components/Modal';
 import type { Product } from '../utils/api';
-import { Plus, Search, Edit2, Trash2, FileText, StickyNote, Filter, ChevronDown } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, FileText, StickyNote, Filter } from 'lucide-react';
 
 const Productos: React.FC = () => {
   const { products, loading, error, addProduct, editProduct, removeProduct } = useProducts();
