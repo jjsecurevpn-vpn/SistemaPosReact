@@ -281,6 +281,14 @@ const Reportes: React.FC = () => {
                                         </div>
                                       ))}
                                     </div>
+                                    {sale.notas && (
+                                      <div className="mt-3 p-3 bg-neutral-800/50 border border-neutral-700 rounded-lg">
+                                        <h6 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">
+                                          Comentarios
+                                        </h6>
+                                        <p className="text-sm text-neutral-300">{sale.notas}</p>
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="text-left sm:text-right flex-shrink-0">
                                     <p className="text-lg md:text-xl font-bold text-green-400">
@@ -348,6 +356,14 @@ const Reportes: React.FC = () => {
                                         <p className="text-yellow-400">Pendiente: {formatCurrency(sale.total)}</p>
                                       )}
                                     </div>
+                                    {sale.notas && (
+                                      <div className="mt-3 p-3 bg-neutral-800/50 border border-neutral-700 rounded-lg">
+                                        <h6 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">
+                                          Comentarios
+                                        </h6>
+                                        <p className="text-sm text-neutral-300">{sale.notas}</p>
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="text-left sm:text-right flex-shrink-0">
                                     <p className="text-lg md:text-xl font-bold text-blue-400">

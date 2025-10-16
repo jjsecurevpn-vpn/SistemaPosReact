@@ -13,6 +13,7 @@ export interface Sale {
   id: number;
   fecha: string;
   total: number;
+  notas?: string;
 }
 
 export interface SaleProduct {
@@ -62,10 +63,13 @@ export const deleteProduct = async (id: number): Promise<void> => {
 };
 
 // Ventas
-export const createSale = async (total: number): Promise<Sale> => {
+export const createSale = async (
+  total: number,
+  notas?: string
+): Promise<Sale> => {
   const { data, error } = await supabase
     .from("ventas")
-    .insert([{ total }])
+    .insert([{ total, notas }])
     .select()
     .single();
   if (error) throw error;

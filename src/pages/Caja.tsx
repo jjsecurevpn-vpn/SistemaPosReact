@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../contexts/NotificationContext';
 import Modal from '../components/Modal';
 import { MdAdd, MdTrendingUp, MdTrendingDown, MdAccountBalanceWallet, MdDelete } from 'react-icons/md';
+import type { MovimientoCaja } from '../hooks/useCaja';
 
 const Caja: React.FC = () => {
   const {
@@ -32,7 +33,7 @@ const Caja: React.FC = () => {
     notas: ''
   });
   const [isConfirmDelete, setIsConfirmDelete] = useState(false);
-  const [movementToDelete, setMovementToDelete] = useState<number | null>(null);
+  const [movementToDelete, setMovementToDelete] = useState<MovimientoCaja | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,14 +73,17 @@ const Caja: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    setMovementToDelete(id);
-    setIsConfirmDelete(true);
+    const movimiento = movimientos.find(m => m.id === id);
+    if (movimiento) {
+      setMovementToDelete(movimiento);
+      setIsConfirmDelete(true);
+    }
   };
 
   const confirmDelete = async () => {
     if (movementToDelete) {
       try {
-        await eliminarMovimiento(movementToDelete);
+        await eliminarMovimiento(movementToDelete.id);
         showNotification('Movimiento eliminado exitosamente', 'success');
       } catch {
         // Error is handled in the hook
@@ -440,7 +444,12 @@ const Caja: React.FC = () => {
         size="sm"
       >
         <div className="text-center">
-          <p className="text-neutral-300 mb-6">¿Estás seguro de que quieres eliminar este movimiento?</p>
+          <p className="text-neutral-300 mb-6">
+            {movementToDelete?.tipo === 'ingreso' && (movementToDelete.categoria?.toLowerCase().includes('venta') || movementToDelete.categoria?.toLowerCase().includes('fiado'))
+              ? '¿Estás seguro de que quieres eliminar esta venta? Esto también eliminará la venta de los reportes.'
+              : '¿Estás seguro de que quieres eliminar este movimiento?'
+            }
+          </p>
           <div className="flex justify-center gap-4">
             <button
               onClick={cancelDelete}

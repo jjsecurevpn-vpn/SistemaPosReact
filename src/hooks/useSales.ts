@@ -57,8 +57,8 @@ export const useSales = () => {
         // Calculate total
         const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
-        // Create sale
-        const sale = await createSale(total);
+        // Create sale with notes
+        const sale = await createSale(total, notas);
 
         // Create sale products
         const saleProducts = cart.map((item) => ({

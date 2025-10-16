@@ -5,12 +5,14 @@ import { useClientes } from '../hooks/useClientes';
 import { useNotification } from '../hooks/useNotification';
 import Notification from '../components/Notification';
 import type { Cliente } from '../hooks/useClientes';
+import { Search, ShoppingCart, CreditCard, Banknote, ChevronDown, Plus, Minus, X } from 'lucide-react';
 
 const POS: React.FC = () => {
   const [search, setSearch] = useState('');
   const [ventaAlFiado, setVentaAlFiado] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [clienteDropdownOpen, setClienteDropdownOpen] = useState(false);
+  const [ventaNotas, setVentaNotas] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { products, loading: productsLoading, error: productsError, fetchProducts } = useProducts();
   const { cart, total, loading: saleLoading, error: saleError, addToCart, removeFromCart, confirmSale } = useSales();
@@ -21,7 +23,6 @@ const POS: React.FC = () => {
     cargarClientes();
   }, [cargarClientes]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -34,7 +35,7 @@ const POS: React.FC = () => {
   }, []);
 
   const filteredProducts = products.filter(p =>
-    p.nombre.toLowerCase().includes(search.toLowerCase())
+    search.trim() !== '' && p.nombre.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleConfirmSale = async () => {
@@ -44,11 +45,19 @@ const POS: React.FC = () => {
         return;
       }
 
+      const notasCombinadas = ventaAlFiado && clienteSeleccionado
+        ? `${ventaNotas ? ventaNotas + ' - ' : ''}Venta al fiado a ${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido}`
+        : ventaNotas;
+
       await confirmSale(
         ventaAlFiado ? clienteSeleccionado?.id : undefined,
-        undefined, // fechaVencimiento - podría agregarse después
-        ventaAlFiado ? `Venta al fiado a ${clienteSeleccionado?.nombre} ${clienteSeleccionado?.apellido}` : undefined
+        undefined,
+        notasCombinadas || undefined
       );
+
+      setVentaNotas('');
+      setVentaAlFiado(false);
+      setClienteSeleccionado(null);
 
       await fetchProducts();
       showSuccess(ventaAlFiado ? 'Venta al fiado confirmada exitosamente' : 'Venta confirmada exitosamente');
@@ -58,7 +67,7 @@ const POS: React.FC = () => {
   };
 
   return (
-    <div className="h-full bg-[#181818] flex flex-col md:flex-row overflow-hidden">
+    <div className="h-full bg-[#181818] flex flex-col">
       {/* Error Messages */}
       {(productsError || saleError) && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-11/12 md:w-auto">
@@ -68,186 +77,213 @@ const POS: React.FC = () => {
         </div>
       )}
 
-      {/* Products Section - Left Side */}
-      <div className="flex flex-col w-full md:w-1/2 lg:w-2/3 h-1/2 md:h-full border-r border-neutral-800">
-        {/* Search Bar */}
-        <div className="p-4 border-b border-neutral-800 bg-neutral-900/50 flex-shrink-0">
+      {/* Mobile: Search Header */}
+      <div className="md:hidden border-b border-neutral-800 bg-neutral-900 p-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" size={18} />
           <input
             type="text"
-            placeholder="Buscar producto..."
+            placeholder="Escribe para buscar productos..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-neutral-700 bg-neutral-900 text-neutral-200 p-3 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full pl-9 pr-9 py-2 text-sm border border-neutral-800 bg-neutral-900 text-neutral-200 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
+      </div>
 
-        {/* Products List - Scrollable */}
-        <div className="flex-1 overflow-auto min-h-0">
-          <div className="p-4 md:p-6">
-            <h3 className="text-lg font-semibold mb-3 text-neutral-200">Productos</h3>
+      {/* Main Content - Products and Cart Side by Side */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Products Section - Left */}
+        <div className="flex-1 flex flex-col border-r border-neutral-800 overflow-hidden">
+          {/* Desktop Search */}
+          <div className="hidden md:block p-4 border-b border-neutral-800 bg-neutral-900">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" size={20} />
+              <input
+                type="text"
+                placeholder="Escribe para buscar productos..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 border border-neutral-800 bg-[#181818] text-neutral-200 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+          </div>
 
+          {/* Products Grid */}
+          <div className="flex-1 overflow-auto">
             {productsLoading ? (
-              <div className="flex items-center justify-center h-40">
-                <p className="text-neutral-500">Cargando...</p>
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3"></div>
+                  <p className="text-sm text-neutral-500">Cargando...</p>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2">
-                {filteredProducts.map(product => (
-                  <div
-                    key={product.id}
-                    className="flex items-center justify-between p-3 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-lg transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-neutral-200 truncate">{product.nombre}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-sm text-green-400 font-semibold">ARS ${product.precio}</span>
-                        <span className={`text-xs ${product.stock > 10 ? 'text-neutral-500' : product.stock > 0 ? 'text-yellow-500' : 'text-red-500'}`}>
-                          Stock: {product.stock}
+              <div className="p-3 md:p-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
+                  {filteredProducts.map(product => (
+                    <button
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      disabled={product.stock === 0 || (cart.find(item => item.product.id === product.id)?.quantity ?? 0) >= product.stock}
+                      className="group relative bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-lg p-3 md:p-4 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                    >
+                      {/* Stock Badge */}
+                      <div className="absolute top-2 right-2">
+                        <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-medium ${
+                          product.stock === 0
+                            ? 'bg-red-900/50 text-red-400'
+                            : product.stock < 5
+                            ? 'bg-yellow-900/50 text-yellow-400'
+                            : 'bg-neutral-800 text-neutral-400'
+                        }`}>
+                          {product.stock}
                         </span>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => addToCart(product)}
-                      className="ml-3 flex items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-medium text-gray-200 hover:border-neutral-500 hover:bg-neutral-800 transition disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={product.stock === 0 || (cart.find(item => item.product.id === product.id)?.quantity ?? 0) >= product.stock}
-                    >
-                      Agregar
+
+                      <div className="pr-8">
+                        <h3 className="font-semibold text-neutral-200 text-sm md:text-base mb-1 line-clamp-2">
+                          {product.nombre}
+                        </h3>
+                        <p className="text-green-400 font-bold text-base md:text-lg">
+                          ${product.precio}
+                        </p>
+                      </div>
+
+                      {/* Add Icon on Hover */}
+                      <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/10 rounded-lg transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div className="bg-blue-600 text-white p-2 rounded-full">
+                          <Plus size={20} />
+                        </div>
+                      </div>
                     </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
                 {filteredProducts.length === 0 && (
-                  <div className="text-center py-8 text-neutral-500">
-                    No se encontraron productos
+                  <div className="text-center py-12 text-neutral-500">
+                    <ShoppingCart className="mx-auto mb-3 opacity-50" size={48} />
+                    <p>{search.trim() === '' ? 'Escribe para buscar productos' : 'No se encontraron productos'}</p>
                   </div>
                 )}
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Cart Section - Right Side */}
-      <div className="flex flex-col w-full md:w-1/2 lg:w-1/3 h-1/2 md:h-full bg-neutral-900/30 relative">
-        {/* Cart Header */}
-        <div className="p-4 border-b border-neutral-800 bg-neutral-900/50 flex-shrink-0 md:block hidden">
-          <h3 className="text-lg font-semibold text-neutral-200">
-            Carrito <span className="text-sm font-normal text-neutral-500">({cart.length})</span>
-          </h3>
-        </div>
+        {/* Cart Section - Right (Desktop) */}
+        <div className="hidden md:flex md:w-80 lg:w-96 flex-col bg-neutral-900 h-full">
+          {/* Cart Header */}
+          <div className="p-3 border-b border-neutral-800 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-neutral-200 flex items-center gap-2">
+                <ShoppingCart size={18} />
+                Carrito
+              </h3>
+              <span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-1 rounded-full">
+                {cart.length}
+              </span>
+            </div>
+          </div>
 
-        {/* Mobile Cart Header - Fixed */}
-        <div className="md:hidden p-4 border-b border-neutral-800 bg-neutral-900/95 backdrop-blur-sm sticky top-0 z-10 flex-shrink-0">
-          <h3 className="text-lg font-semibold text-neutral-200">
-            Carrito <span className="text-sm font-normal text-neutral-500">({cart.length})</span>
-          </h3>
-        </div>
-
-        {/* Cart Items - Scrollable */}
-        <div className="flex-1 overflow-auto min-h-0 md:pb-0 md:mb-0">
-          <div className="p-4 md:p-6">
+          {/* Cart Items - Scrollable with max height */}
+          <div className="flex-1 overflow-auto min-h-0 max-h-[60vh] p-3">
             {cart.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-neutral-500 text-center">El carrito está vacío</p>
+              <div className="flex flex-col items-center justify-center h-full text-neutral-500">
+                <ShoppingCart className="mb-2 opacity-50" size={40} />
+                <p className="text-sm">Carrito vacío</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {cart.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-neutral-900 border border-neutral-800 rounded-lg"
-                  >
-                    <div className="flex-1 min-w-0 mr-3">
-                      <p className="font-medium text-neutral-200 truncate">{item.product.nombre}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-neutral-400">x{item.quantity}</span>
-                        <span className="text-sm text-neutral-500">•</span>
-                        <span className="text-sm text-green-400 font-semibold">ARS ${item.subtotal.toFixed(2)}</span>
+                  <div key={index} className="bg-[#181818] border border-neutral-800 rounded-lg p-2.5">
+                    <div className="flex items-start justify-between mb-1.5">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="font-medium text-neutral-200 text-sm truncate">{item.product.nombre}</p>
+                        <p className="text-green-400 font-semibold text-base">${item.subtotal.toFixed(2)}</p>
                       </div>
+                      <button
+                        onClick={() => removeFromCart(index)}
+                        className="p-1 hover:bg-red-900/30 text-red-400 rounded transition-colors flex-shrink-0"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => removeFromCart(index)}
-                      className="flex items-center gap-2 rounded-md border border-red-700 bg-red-900/20 px-3 py-2 text-sm font-medium text-red-200 hover:border-red-500 hover:bg-red-800/30 transition flex-shrink-0"
-                    >
-                      Quitar
-                    </button>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-neutral-500">Cantidad:</span>
+                      <span className="text-neutral-400">×{item.quantity}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
 
-        {/* Desktop Total and Confirm Button - Fixed at bottom */}
-        <div className="hidden md:block border-t border-neutral-800 bg-neutral-900 absolute bottom-0 left-0 right-0">
-          {/* Credit Sale Options */}
-          <div className="p-4 border-b border-neutral-800">
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-neutral-400 mb-3">
-                Tipo de venta
-              </label>
-              <div className="flex gap-2">
+          {/* Checkout Section - Fixed at bottom with minimum height */}
+          <div className="border-t border-neutral-800 bg-neutral-900 flex-shrink-0 min-h-[180px]">
+            {/* Payment Type */}
+            <div className="px-3 py-2 border-b border-neutral-800">
+              <label className="block text-xs font-medium text-neutral-400 mb-2">Tipo de pago</label>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => {
                     setVentaAlFiado(false);
                     setClienteSeleccionado(null);
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition ${
+                  className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all ${
                     !ventaAlFiado
-                      ? 'border-blue-500 bg-blue-900/20 text-blue-200'
-                      : 'border-neutral-700 bg-neutral-900 text-gray-200 hover:border-neutral-500 hover:bg-neutral-800'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                  </svg>
+                  <Banknote size={14} />
                   Contado
                 </button>
                 <button
                   onClick={() => setVentaAlFiado(true)}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition ${
+                  className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all ${
                     ventaAlFiado
-                      ? 'border-yellow-500 bg-yellow-900/20 text-yellow-200'
-                      : 'border-neutral-700 bg-neutral-900 text-gray-200 hover:border-neutral-500 hover:bg-neutral-800'
+                      ? 'bg-yellow-600 text-white'
+                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Al fiado
+                  <CreditCard size={14} />
+                  Fiado
                 </button>
               </div>
             </div>
 
+            {/* Client Selection */}
             {ventaAlFiado && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  Seleccionar cliente:
-                </label>
+              <div className="px-3 py-2 border-b border-neutral-800">
+                <label className="block text-xs font-medium text-neutral-400 mb-2">Cliente</label>
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setClienteDropdownOpen(!clienteDropdownOpen)}
-                    className="w-full flex items-center justify-between border border-neutral-700 bg-neutral-900 text-neutral-200 p-3 rounded-lg hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full flex items-center justify-between px-2.5 py-2 bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-lg text-xs hover:border-neutral-600 transition-all"
                   >
                     <span className={clienteSeleccionado ? 'text-neutral-200' : 'text-neutral-500'}>
-                      {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido}` : 'Seleccionar cliente...'}
+                      {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido}` : 'Seleccionar...'}
                     </span>
-                    <svg className={`w-4 h-4 text-neutral-400 transition-transform ${clienteDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ChevronDown size={14} className={`transition-transform ${clienteDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-
-                  {/* Dropdown Menu */}
                   {clienteDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
-                      <button
-                        onClick={() => {
-                          setClienteSeleccionado(null);
-                          setClienteDropdownOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors first:rounded-t-lg"
-                      >
-                        Seleccionar cliente...
-                      </button>
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg z-50 max-h-40 overflow-auto">
                       {clientes.map(cliente => (
                         <button
                           key={cliente.id}
@@ -255,7 +291,7 @@ const POS: React.FC = () => {
                             setClienteSeleccionado(cliente);
                             setClienteDropdownOpen(false);
                           }}
-                          className="w-full text-left px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-800 transition-colors"
+                          className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-neutral-700 transition-colors"
                         >
                           {cliente.nombre} {cliente.apellido}
                         </button>
@@ -266,131 +302,148 @@ const POS: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <span className="text-neutral-400 font-medium">Total:</span>
-              <span className="text-2xl font-bold text-green-400">ARS ${total.toFixed(2)}</span>
+            {/* Notes */}
+            <div className="px-3 py-2 border-b border-neutral-800">
+              <label className="block text-xs font-medium text-neutral-400 mb-2">Notas</label>
+              <textarea
+                value={ventaNotas}
+                onChange={(e) => setVentaNotas(e.target.value)}
+                placeholder="Comentarios..."
+                rows={2}
+                className="w-full px-2.5 py-2 bg-neutral-800 border border-neutral-700 text-neutral-200 text-xs rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-          </div>
 
-          <div className="p-4">
-            <button
-              onClick={handleConfirmSale}
-              disabled={cart.length === 0 || saleLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-md border border-green-700 bg-green-900/20 px-6 py-4 text-sm font-medium text-green-200 hover:border-green-500 hover:bg-green-800/30 transition disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {saleLoading ? 'Confirmando...' : 'Confirmar Venta'}
-            </button>
+            {/* Total and Confirm */}
+            <div className="px-3 py-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-neutral-400 text-sm font-medium">Total</span>
+                <span className="text-xl font-bold text-green-400">${total.toFixed(2)}</span>
+              </div>
+              <button
+                onClick={handleConfirmSale}
+                disabled={cart.length === 0 || saleLoading}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-neutral-700 disabled:text-neutral-500 text-white py-2.5 rounded-lg font-semibold text-sm transition-colors disabled:cursor-not-allowed"
+              >
+                {saleLoading ? 'Procesando...' : 'Confirmar Venta'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Total and Confirm Button - Fixed Footer */}
-      <div className="md:hidden border-t border-neutral-800 bg-neutral-900 fixed bottom-0 left-0 right-0 z-10">
-        {/* Mobile Total Display */}
-        <div className="p-3 border-b border-neutral-800">
-          <div className="flex items-center justify-between">
-            <span className="text-neutral-400 font-medium">Total:</span>
-            <span className="text-xl font-bold text-green-400">ARS ${total.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* Mobile Credit Sale Options */}
-        <div className="p-3 border-b border-neutral-800">
-          <div className="mb-2">
-            <label className="block text-xs font-medium text-neutral-400 mb-2">
-              Tipo de venta
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setVentaAlFiado(false);
-                  setClienteSeleccionado(null);
-                }}
-                className={`flex-1 flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-xs font-medium transition ${
-                  !ventaAlFiado
-                    ? 'border-blue-500 bg-blue-900/20 text-blue-200'
-                    : 'border-neutral-700 bg-neutral-900 text-gray-200 hover:border-neutral-500 hover:bg-neutral-800'
-                }`}
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                </svg>
-                Contado
-              </button>
-              <button
-                onClick={() => setVentaAlFiado(true)}
-                className={`flex-1 flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-xs font-medium transition ${
-                  ventaAlFiado
-                    ? 'border-yellow-500 bg-yellow-900/20 text-yellow-200'
-                    : 'border-neutral-700 bg-neutral-900 text-gray-200 hover:border-neutral-500 hover:bg-neutral-800'
-                }`}
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                Al fiado
-              </button>
+      {/* Mobile: Fixed Bottom Cart Summary */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 z-20 max-h-[60vh] flex flex-col">
+        {/* Cart Items - Scrollable */}
+        {cart.length > 0 && (
+          <div className="overflow-auto max-h-48 border-b border-neutral-800">
+            <div className="p-3 space-y-2">
+              {cart.map((item, index) => (
+                <div key={index} className="bg-[#181818] border border-neutral-800 rounded-lg p-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <p className="font-medium text-neutral-200 text-xs truncate">{item.product.nombre}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-neutral-400">×{item.quantity}</span>
+                        <span className="text-xs text-green-400 font-semibold">${item.subtotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeFromCart(index)}
+                      className="p-1 hover:bg-red-900/30 text-red-400 rounded transition-colors flex-shrink-0"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
+        {/* Checkout Section */}
+        <div className="p-3 flex-shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <ShoppingCart size={18} className="text-neutral-400" />
+              <span className="text-sm text-neutral-400">{cart.length} items</span>
+            </div>
+            <span className="text-xl font-bold text-green-400">${total.toFixed(2)}</span>
+          </div>
+          
+          {/* Payment Type Compact */}
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <button
+              onClick={() => {
+                setVentaAlFiado(false);
+                setClienteSeleccionado(null);
+              }}
+              className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                !ventaAlFiado
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-neutral-800 text-neutral-400'
+              }`}
+            >
+              <Banknote size={14} />
+              Contado
+            </button>
+            <button
+              onClick={() => setVentaAlFiado(true)}
+              className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                ventaAlFiado
+                  ? 'bg-yellow-600 text-white'
+                  : 'bg-neutral-800 text-neutral-400'
+              }`}
+            >
+              <CreditCard size={14} />
+              Fiado
+            </button>
+          </div>
+
+          {/* Client Selection Mobile */}
           {ventaAlFiado && (
-            <div className="mb-2">
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setClienteDropdownOpen(!clienteDropdownOpen)}
-                  className="w-full flex items-center justify-between border border-neutral-700 bg-neutral-900 text-neutral-200 p-2 rounded-lg text-sm hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <span className={clienteSeleccionado ? 'text-neutral-200' : 'text-neutral-500'}>
-                    {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido}` : 'Cliente...'}
-                  </span>
-                  <svg className={`w-3 h-3 text-neutral-400 transition-transform ${clienteDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                {/* Dropdown Menu */}
-                {clienteDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg shadow-lg z-50 max-h-32 overflow-auto">
+            <div className="mb-2" ref={dropdownRef}>
+              <button
+                onClick={() => setClienteDropdownOpen(!clienteDropdownOpen)}
+                className="w-full flex items-center justify-between px-2 py-1.5 bg-neutral-800 border border-neutral-700 text-neutral-200 rounded text-xs"
+              >
+                <span className={clienteSeleccionado ? 'text-neutral-200' : 'text-neutral-500'}>
+                  {clienteSeleccionado ? `${clienteSeleccionado.nombre}` : 'Cliente...'}
+                </span>
+                <ChevronDown size={14} />
+              </button>
+              {clienteDropdownOpen && (
+                <div className="absolute bottom-full left-3 right-3 mb-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg z-50 max-h-32 overflow-auto">
+                  {clientes.map(cliente => (
                     <button
+                      key={cliente.id}
                       onClick={() => {
-                        setClienteSeleccionado(null);
+                        setClienteSeleccionado(cliente);
                         setClienteDropdownOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors first:rounded-t-lg"
+                      className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-neutral-700"
                     >
-                      Cliente...
+                      {cliente.nombre} {cliente.apellido}
                     </button>
-                    {clientes.map(cliente => (
-                      <button
-                        key={cliente.id}
-                        onClick={() => {
-                          setClienteSeleccionado(cliente);
-                          setClienteDropdownOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-neutral-800 transition-colors"
-                      >
-                        {cliente.nombre} {cliente.apellido}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
 
-        <div className="p-4">
           <button
             onClick={handleConfirmSale}
             disabled={cart.length === 0 || saleLoading}
-            className="w-full flex items-center justify-center gap-2 rounded-md border border-green-700 bg-green-900/20 px-6 py-4 text-sm font-medium text-green-200 hover:border-green-500 hover:bg-green-800/30 transition disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-neutral-700 text-white py-2.5 rounded-lg font-semibold text-sm transition-colors disabled:cursor-not-allowed"
           >
-            {saleLoading ? 'Confirmando...' : 'Confirmar Venta'}
+            {saleLoading ? 'Procesando...' : 'Confirmar Venta'}
           </button>
         </div>
       </div>
 
-      {/* Notification */}
+      {/* Mobile: Add padding to avoid overlap with fixed footer */}
+      <div className="md:hidden h-32"></div>
+
       <Notification notification={notification} onClose={hideNotification} />
     </div>
   );

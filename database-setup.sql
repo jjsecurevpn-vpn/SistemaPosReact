@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS productos (
 CREATE TABLE IF NOT EXISTS ventas (
   id SERIAL PRIMARY KEY,
   fecha TIMESTAMP DEFAULT NOW(),
-  total NUMERIC NOT NULL
+  total NUMERIC NOT NULL,
+  notas TEXT
 );
 
 -- Crear tabla venta_productos
@@ -78,43 +79,15 @@ CREATE TABLE IF NOT EXISTS ventas_fiadas (
   notas TEXT
 );
 
--- Crear tabla pagos_fiados (pagos de deudas)
-CREATE TABLE IF NOT EXISTS pagos_fiados (
+-- Crear tabla cliente_notas
+CREATE TABLE IF NOT EXISTS cliente_notas (
   id SERIAL PRIMARY KEY,
-  venta_fiada_id INTEGER REFERENCES ventas_fiadas(id),
-  monto NUMERIC NOT NULL,
-  fecha_pago TIMESTAMP DEFAULT NOW(),
-  metodo_pago TEXT,
-  notas TEXT
+  cliente_id INTEGER REFERENCES clientes(id) ON DELETE CASCADE,
+  nota TEXT NOT NULL,
+  fecha TIMESTAMP DEFAULT NOW(),
+  usuario_id UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP DEFAULT NOW()
 );
-
--- =====================================================================================
--- SCRIPT PARA LIMPIAR COMPLETAMENTE LOS DATOS DE CLIENTES (Ejecutar en SQL Editor de Supabase)
--- ⚠️  ATENCIÓN: Esto eliminará TODOS los datos de clientes y sus deudas ⚠️
--- =====================================================================================
-
--- Limpiar pagos de fiado
-TRUNCATE TABLE pagos_fiados RESTART IDENTITY CASCADE;
-
--- Limpiar ventas al fiado
-TRUNCATE TABLE ventas_fiadas RESTART IDENTITY CASCADE;
-
--- Limpiar clientes
-TRUNCATE TABLE clientes RESTART IDENTITY CASCADE;
-
--- =====================================================================================
--- SCRIPT PARA RESETEAR TODOS LOS DATOS (Ejecutar en SQL Editor de Supabase)
--- ⚠️  ATENCIÓN: Esto eliminará TODOS los datos permanentemente ⚠️
--- =====================================================================================
-
--- Resetear tablas con foreign keys primero (en orden inverso de dependencias)
-TRUNCATE TABLE pagos_fiados RESTART IDENTITY CASCADE;
-TRUNCATE TABLE ventas_fiadas RESTART IDENTITY CASCADE;
-TRUNCATE TABLE venta_productos RESTART IDENTITY CASCADE;
-TRUNCATE TABLE ventas RESTART IDENTITY CASCADE;
-TRUNCATE TABLE movimientos_caja RESTART IDENTITY CASCADE;
-TRUNCATE TABLE clientes RESTART IDENTITY CASCADE;
-TRUNCATE TABLE productos RESTART IDENTITY CASCADE;
 
 -- =====================================================================================
 -- SCRIPT PARA VERIFICAR QUE TODAS LAS TABLAS EXISTEN
@@ -126,7 +99,7 @@ SELECT
   table_schema
 FROM information_schema.tables 
 WHERE table_schema = 'public' 
-  AND table_name IN ('productos', 'ventas', 'venta_productos', 'movimientos_caja', 'clientes', 'ventas_fiadas', 'pagos_fiados')
+  AND table_name IN ('productos', 'ventas', 'venta_productos', 'movimientos_caja', 'clientes', 'ventas_fiadas', 'pagos_fiados', 'cliente_notas')
 ORDER BY table_name;
 
 -- =====================================================================================
@@ -177,11 +150,24 @@ ON CONFLICT (name) DO NOTHING;
 -- Habilitar RLS en las tablas
 ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cliente_notas ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para roles (todos pueden leer)
 DROP POLICY IF EXISTS "Roles are viewable by authenticated users" ON roles;
 CREATE POLICY "Roles are viewable by authenticated users" ON roles
   FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Función para verificar si un usuario es admin (sin recursión)
+CREATE OR REPLACE FUNCTION is_admin(user_uuid UUID DEFAULT auth.uid())
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM user_roles ur
+    JOIN roles r ON ur.role_id = r.id
+    WHERE ur.user_id = user_uuid AND r.name = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Políticas para user_roles
 DROP POLICY IF EXISTS "Users can view their own roles" ON user_roles;
@@ -190,27 +176,44 @@ CREATE POLICY "Users can view their own roles" ON user_roles
 
 DROP POLICY IF EXISTS "Admins can view all user roles" ON user_roles;
 CREATE POLICY "Admins can view all user roles" ON user_roles
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur
-      JOIN roles r ON ur.role_id = r.id
-      WHERE ur.user_id = auth.uid() AND r.name = 'admin'
-    )
-  );
+  FOR SELECT USING (is_admin());
 
 DROP POLICY IF EXISTS "Admins can manage user roles" ON user_roles;
 CREATE POLICY "Admins can manage user roles" ON user_roles
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur
-      JOIN roles r ON ur.role_id = r.id
-      WHERE ur.user_id = auth.uid() AND r.name = 'admin'
-    )
-  );
+  FOR ALL USING (is_admin());
+
+-- Políticas para cliente_notas
+DROP POLICY IF EXISTS "Users can view client notes" ON cliente_notas;
+CREATE POLICY "Users can view client notes" ON cliente_notas
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Users can insert client notes" ON cliente_notas;
+CREATE POLICY "Users can insert client notes" ON cliente_notas
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Users can update their own client notes" ON cliente_notas;
+CREATE POLICY "Users can update their own client notes" ON cliente_notas
+  FOR UPDATE USING (auth.uid() = usuario_id);
+
+DROP POLICY IF EXISTS "Admins can delete client notes" ON cliente_notas;
+CREATE POLICY "Admins can delete client notes" ON cliente_notas
+  FOR DELETE USING (is_admin());
 
 -- =====================================================================================
 -- FUNCIONES HELPER PARA AUTENTICACIÓN
 -- =====================================================================================
+
+-- Función para verificar si un usuario es admin (sin recursión)
+CREATE OR REPLACE FUNCTION is_admin(user_uuid UUID DEFAULT auth.uid())
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM user_roles ur
+    JOIN roles r ON ur.role_id = r.id
+    WHERE ur.user_id = user_uuid AND r.name = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Función para verificar si un usuario tiene un rol específico
 CREATE OR REPLACE FUNCTION has_role(user_uuid UUID, role_name TEXT)

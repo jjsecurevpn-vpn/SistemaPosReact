@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useClientes } from '../hooks/useClientes';
 import { useAuth } from '../hooks/useAuth';
-import { useNotification } from '../hooks/useNotification';
+import { useNotification } from '../contexts/NotificationContext';
+import { useClienteNotas } from '../hooks/useClienteNotas';
 import type { Cliente, VentaFiada, PagoFiado } from '../hooks/useClientes';
 import Modal from '../components/Modal';
-import Notification from '../components/Notification';
-import { Plus, Search, Edit2, Trash2, Eye, CreditCard } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Eye, CreditCard, MessageSquare } from 'lucide-react';
 
 const Clientes: React.FC = () => {
   const {
@@ -22,8 +22,7 @@ const Clientes: React.FC = () => {
   } = useClientes();
 
   const { isAdmin } = useAuth();
-
-  const { notification, showSuccess, showError, hideNotification } = useNotification();
+  const { showNotification } = useNotification();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
@@ -39,6 +38,63 @@ const Clientes: React.FC = () => {
   const [selectedDebt, setSelectedDebt] = useState<VentaFiada | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [clienteForNotes, setClienteForNotes] = useState<Cliente | null>(null);
+  const [newNote, setNewNote] = useState('');
+  const [editingNote, setEditingNote] = useState<{ id: number; nota: string } | null>(null);
+
+  const { notas, loading: notasLoading, addNota, updateNota, deleteNota } = useClienteNotas(clienteForNotes?.id || null);
+
+  const handleOpenNotesModal = (cliente: Cliente) => {
+    setClienteForNotes(cliente);
+    setShowNotesModal(true);
+  };
+
+  const handleCloseNotesModal = () => {
+    setShowNotesModal(false);
+    setClienteForNotes(null);
+    setNewNote('');
+    setEditingNote(null);
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !clienteForNotes) return;
+    try {
+      await addNota(newNote.trim());
+      setNewNote('');
+      showNotification('Nota agregada exitosamente', 'success');
+    } catch (error) {
+      showNotification('Error al agregar la nota', 'error');
+    }
+  };
+
+  const handleEditNote = (nota: { id: number; nota: string }) => {
+    setEditingNote(nota);
+  };
+
+  const handleUpdateNote = async () => {
+    if (!editingNote || !editingNote.nota.trim()) return;
+    try {
+      await updateNota(editingNote.id, editingNote.nota.trim());
+      setEditingNote(null);
+      showNotification('Nota actualizada exitosamente', 'success');
+    } catch (error) {
+      showNotification('Error al actualizar la nota', 'error');
+    }
+  };
+
+  const handleDeleteNote = async (id: number) => {
+    if (!isAdmin) {
+      showNotification('Solo los administradores pueden eliminar notas', 'error');
+      return;
+    }
+    try {
+      await deleteNota(id);
+      showNotification('Nota eliminada exitosamente', 'success');
+    } catch (error) {
+      showNotification('Error al eliminar la nota', 'error');
+    }
+  };
   const [paymentNotes, setPaymentNotes] = useState('');
 
   const [formData, setFormData] = useState({
@@ -64,17 +120,17 @@ const Clientes: React.FC = () => {
     e.preventDefault();
 
     if (!formData.nombre.trim()) {
-      showError('El nombre es obligatorio');
+      showNotification('El nombre es obligatorio', 'error');
       return;
     }
 
     try {
       if (isEditing && editingCliente) {
         await editarCliente(editingCliente.id, formData);
-        showSuccess('Cliente actualizado exitosamente');
+        showNotification('Cliente actualizado exitosamente', 'success');
       } else {
         await agregarCliente(formData);
-        showSuccess('Cliente agregado exitosamente');
+        showNotification('Cliente agregado exitosamente', 'success');
       }
 
       handleCloseModal();
@@ -106,11 +162,11 @@ const Clientes: React.FC = () => {
     if (clienteToDelete) {
       try {
         await eliminarCliente(clienteToDelete.id);
-        showSuccess('Cliente eliminado exitosamente');
+        showNotification('Cliente eliminado exitosamente', 'success');
         setShowDeleteModal(false);
         setClienteToDelete(null);
       } catch (error) {
-        showError('Error al eliminar el cliente');
+        showNotification('Error al eliminar el cliente', 'error');
       }
     }
   };
@@ -162,7 +218,7 @@ const Clientes: React.FC = () => {
       alert('Pago registrado exitosamente');
       cerrarModalPago();
     } catch {
-      showError('Error al registrar el pago');
+      showNotification('Error al registrar el pago', 'error');
     }
   };
 
@@ -290,6 +346,13 @@ const Clientes: React.FC = () => {
                 >
                   <Eye size={14} />
                   Ver
+                </button>
+                <button
+                  onClick={() => handleOpenNotesModal(cliente)}
+                  className="flex-1 flex items-center justify-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800 transition-all"
+                >
+                  <MessageSquare size={14} />
+                  Notas
                 </button>
                 {isAdmin && (
                   <>
@@ -670,8 +733,105 @@ const Clientes: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Notification */}
-      <Notification notification={notification} onClose={hideNotification} />
+      {/* Notes Modal */}
+      <Modal
+        isOpen={showNotesModal}
+        onClose={handleCloseNotesModal}
+        title={`Notas de ${clienteForNotes?.nombre} ${clienteForNotes?.apellido}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Add new note */}
+          <div className="border-b border-neutral-700 pb-4">
+            <label className="block text-sm font-medium mb-2 text-neutral-300">Nueva nota</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Escribe una nota..."
+                className="flex-1 border border-neutral-700 bg-neutral-800 text-neutral-200 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+              />
+              <button
+                onClick={handleAddNote}
+                disabled={!newNote.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-neutral-600 disabled:cursor-not-allowed transition-colors"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Notes list */}
+          <div className="max-h-96 overflow-y-auto">
+            {notasLoading ? (
+              <div className="text-center py-4">
+                <p className="text-neutral-500">Cargando notas...</p>
+              </div>
+            ) : notas.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-neutral-500">No hay notas para este cliente</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notas.map((nota) => (
+                  <div key={nota.id} className="bg-neutral-800 border border-neutral-700 rounded-lg p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        {editingNote?.id === nota.id ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={editingNote.nota}
+                              onChange={(e) => setEditingNote({ ...editingNote, nota: e.target.value })}
+                              className="flex-1 border border-neutral-600 bg-neutral-700 text-neutral-200 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateNote()}
+                            />
+                            <button
+                              onClick={handleUpdateNote}
+                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              onClick={() => setEditingNote(null)}
+                              className="px-3 py-1 bg-neutral-600 text-white rounded hover:bg-neutral-700 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-neutral-200">{nota.nota}</p>
+                        )}
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {new Date(nota.created_at).toLocaleString('es-ES')}
+                        </p>
+                      </div>
+                      {isAdmin && editingNote?.id !== nota.id && (
+                        <div className="flex gap-1 ml-2">
+                          <button
+                            onClick={() => handleEditNote(nota)}
+                            className="p-1 text-neutral-400 hover:text-neutral-200 transition-colors"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNote(nota.id)}
+                            className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

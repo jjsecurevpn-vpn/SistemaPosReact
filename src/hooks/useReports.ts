@@ -5,6 +5,7 @@ export interface SaleWithProducts {
   id: number;
   fecha: string;
   total: number;
+  notas?: string;
   productos: {
     id: number;
     venta_id: number;
