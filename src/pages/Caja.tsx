@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCaja } from '../hooks/useCaja';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../contexts/NotificationContext';
 import Modal from '../components/Modal';
 import { MdAdd, MdTrendingUp, MdTrendingDown, MdAccountBalanceWallet, MdDelete } from 'react-icons/md';
 
@@ -20,6 +21,7 @@ const Caja: React.FC = () => {
   } = useCaja();
 
   const { isAdmin } = useAuth();
+  const { showNotification } = useNotification();
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -29,18 +31,20 @@ const Caja: React.FC = () => {
     categoria: '',
     notas: ''
   });
+  const [isConfirmDelete, setIsConfirmDelete] = useState(false);
+  const [movementToDelete, setMovementToDelete] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const monto = parseFloat(formData.monto);
     if (isNaN(monto) || monto <= 0) {
-      alert('El monto debe ser un número válido mayor a 0');
+      showNotification('El monto debe ser un número válido mayor a 0', 'error');
       return;
     }
 
     if (!formData.descripcion.trim()) {
-      alert('La descripción es obligatoria');
+      showNotification('La descripción es obligatoria', 'error');
       return;
     }
 
@@ -61,21 +65,33 @@ const Caja: React.FC = () => {
         notas: ''
       });
       setShowModal(false);
-      alert('Movimiento agregado exitosamente');
+      showNotification('Movimiento agregado exitosamente', 'success');
     } catch {
       // Error is handled in the hook
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
+    setMovementToDelete(id);
+    setIsConfirmDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    if (movementToDelete) {
       try {
-        await eliminarMovimiento(id);
-        alert('Movimiento eliminado exitosamente');
+        await eliminarMovimiento(movementToDelete);
+        showNotification('Movimiento eliminado exitosamente', 'success');
       } catch {
         // Error is handled in the hook
       }
     }
+    setIsConfirmDelete(false);
+    setMovementToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setIsConfirmDelete(false);
+    setMovementToDelete(null);
   };
 
   const formatCurrency = (amount: number) => {
@@ -414,6 +430,32 @@ const Caja: React.FC = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Confirm Delete Modal */}
+      <Modal
+        isOpen={isConfirmDelete}
+        onClose={cancelDelete}
+        title="Confirmar Eliminación"
+        size="sm"
+      >
+        <div className="text-center">
+          <p className="text-neutral-300 mb-6">¿Estás seguro de que quieres eliminar este movimiento?</p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={cancelDelete}
+              className="px-4 py-2 bg-neutral-700 text-neutral-200 rounded-lg hover:bg-neutral-600 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

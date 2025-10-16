@@ -7,7 +7,9 @@ import Clientes from './pages/Clientes';
 import Caja from './pages/Caja';
 import Reportes from './pages/Reportes';
 import Login from './components/Login';
+import Notification from './components/Notification';
 import { useAuth } from './hooks/useAuth';
+import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 
 // Screen configuration
 const SCREENS = {
@@ -35,8 +37,9 @@ const SCREENS = {
 
 type ScreenKey = keyof typeof SCREENS;
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
+  const { notification, hideNotification } = useNotification();
   const [currentScreen, setCurrentScreen] = useState<ScreenKey>('pos');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -78,8 +81,15 @@ const App: React.FC = () => {
           <CurrentComponent />
         </main>
       </div>
+      <Notification notification={notification} onClose={hideNotification} />
     </div>
   );
 };
+
+const App: React.FC = () => (
+  <NotificationProvider>
+    <AppContent />
+  </NotificationProvider>
+);
 
 export default App;

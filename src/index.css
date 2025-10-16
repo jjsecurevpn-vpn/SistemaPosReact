@@ -4,3 +4,13 @@
 
 /* You can find the original styles in src/styles-old.css */
 
+/* Hide scrollbars */
+::-webkit-scrollbar {
+  display: none;
+}
+
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+

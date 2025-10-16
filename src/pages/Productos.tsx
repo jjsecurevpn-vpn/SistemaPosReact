@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useProducts } from '../hooks/useProducts';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../contexts/NotificationContext';
 import Modal from '../components/Modal';
 import type { Product } from '../utils/api';
 import { Plus, Search, Edit2, Trash2, FileText, StickyNote } from 'lucide-react';
@@ -8,6 +9,7 @@ import { Plus, Search, Edit2, Trash2, FileText, StickyNote } from 'lucide-react'
 const Productos: React.FC = () => {
   const { products, loading, error, addProduct, editProduct, removeProduct } = useProducts();
   const { isAdmin } = useAuth();
+  const { showNotification } = useNotification();
   const [isEditing, setIsEditing] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -20,6 +22,8 @@ const Productos: React.FC = () => {
   const [modalContent, setModalContent] = useState<{ title: string; content: string } | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [isConfirmDelete, setIsConfirmDelete] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
   const resetForm = () => {
     setFormData({ nombre: '', precio: '', stock: '', descripcion: '', notas: '' });
@@ -49,7 +53,7 @@ const Productos: React.FC = () => {
     const stock = parseInt(formData.stock);
 
     if (isNaN(precio) || isNaN(stock)) {
-      alert('Precio y stock deben ser números válidos');
+      showNotification('Precio y stock deben ser números válidos', 'error');
       return;
     }
 
@@ -62,7 +66,7 @@ const Productos: React.FC = () => {
           descripcion: formData.descripcion,
           notas: formData.notas,
         });
-        alert('Producto actualizado exitosamente');
+        showNotification('Producto actualizado exitosamente', 'success');
       } else {
         await addProduct({
           nombre: formData.nombre,
@@ -71,7 +75,7 @@ const Productos: React.FC = () => {
           descripcion: formData.descripcion,
           notas: formData.notas,
         });
-        alert('Producto creado exitosamente');
+        showNotification('Producto creado exitosamente', 'success');
       }
       resetForm();
     } catch {
@@ -80,14 +84,26 @@ const Productos: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+    setProductToDelete(id);
+    setIsConfirmDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    if (productToDelete) {
       try {
-        await removeProduct(id);
-        alert('Producto eliminado exitosamente');
+        await removeProduct(productToDelete);
+        showNotification('Producto eliminado exitosamente', 'success');
       } catch {
         // Error is handled in the hook
       }
     }
+    setIsConfirmDelete(false);
+    setProductToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setIsConfirmDelete(false);
+    setProductToDelete(null);
   };
 
   const openModal = (title: string, content: string) => {
@@ -463,6 +479,32 @@ const Productos: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Delete Modal */}
+      <Modal
+        isOpen={isConfirmDelete}
+        onClose={cancelDelete}
+        title="Confirmar Eliminación"
+        size="sm"
+      >
+        <div className="text-center">
+          <p className="text-neutral-300 mb-6">¿Estás seguro de que quieres eliminar este producto?</p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={cancelDelete}
+              className="px-4 py-2 bg-neutral-700 text-neutral-200 rounded-lg hover:bg-neutral-600 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
