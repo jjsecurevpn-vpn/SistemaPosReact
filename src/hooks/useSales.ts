@@ -5,6 +5,7 @@ import {
   createSaleProducts,
   updateProductStock,
 } from "../utils/api";
+import { supabase } from "../lib/supabase";
 
 export interface CartItem {
   product: Product;
@@ -47,42 +48,115 @@ export const useSales = () => {
     setCart([]);
   }, []);
 
-  const confirmSale = useCallback(async () => {
-    if (cart.length === 0) return;
-    setLoading(true);
-    setError(null);
-    try {
-      // Calculate total
-      const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+  const confirmSale = useCallback(
+    async (clienteId?: number, fechaVencimiento?: string, notas?: string) => {
+      if (cart.length === 0) return;
+      setLoading(true);
+      setError(null);
+      try {
+        // Calculate total
+        const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
-      // Create sale
-      const sale = await createSale(total);
+        // Create sale
+        const sale = await createSale(total);
 
-      // Create sale products
-      const saleProducts = cart.map((item) => ({
-        venta_id: sale.id,
-        producto_id: item.product.id,
-        cantidad: item.quantity,
-        subtotal: item.subtotal,
-      }));
-      await createSaleProducts(saleProducts);
+        // Create sale products
+        const saleProducts = cart.map((item) => ({
+          venta_id: sale.id,
+          producto_id: item.product.id,
+          cantidad: item.quantity,
+          subtotal: item.subtotal,
+        }));
+        await createSaleProducts(saleProducts);
 
-      // Update stock
-      for (const item of cart) {
-        await updateProductStock(
-          item.product.id,
-          item.product.stock - item.quantity
+        // Update stock
+        for (const item of cart) {
+          await updateProductStock(
+            item.product.id,
+            item.product.stock - item.quantity
+          );
+        }
+
+        // If it's a credit sale, create credit sale record and register as fiado
+        if (clienteId) {
+          // Insertar venta fiada
+          const { error: fiadoError } = await supabase
+            .from("ventas_fiadas")
+            .insert([
+              {
+                venta_id: sale.id,
+                cliente_id: clienteId,
+                fecha_vencimiento: fechaVencimiento,
+                estado: "pendiente",
+                notas,
+              },
+            ]);
+
+          if (fiadoError) {
+            console.error("Error al insertar venta fiada:", fiadoError);
+            throw fiadoError;
+          }
+
+          // Register as fiado instead of ingreso
+          const movimientoData = {
+            tipo: "fiado",
+            descripcion: `Venta al fiado #${sale.id}`,
+            monto: total,
+            categoria: "ventas_fiadas",
+            notas: `Cliente ID: ${clienteId}. ${notas || ""}`,
+          };
+
+          console.log(
+            "Intentando insertar movimiento de caja con datos:",
+            movimientoData
+          );
+
+          const { error: cajaError } = await supabase
+            .from("movimientos_caja")
+            .insert([movimientoData]);
+
+          if (cajaError) {
+            console.error("Error al insertar movimiento de caja:", cajaError);
+            console.error("Datos enviados:", movimientoData);
+            console.error("Detalles del error:", {
+              message: cajaError.message,
+              details: cajaError.details,
+              hint: cajaError.hint,
+              code: cajaError.code,
+            });
+            throw new Error(
+              `Error al registrar movimiento de caja: ${
+                cajaError.message || "Error desconocido"
+              }`
+            );
+          }
+        } else {
+          // Register income in cash register for regular sales
+          await supabase.from("movimientos_caja").insert([
+            {
+              tipo: "ingreso",
+              descripcion: `Venta #${sale.id}`,
+              monto: total,
+              categoria: "ventas",
+              notas: `Productos vendidos: ${cart
+                .map((item) => `${item.product.nombre} x${item.quantity}`)
+                .join(", ")}`,
+            },
+          ]);
+        }
+
+        clearCart();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Error al confirmar venta"
         );
+        throw err;
+      } finally {
+        setLoading(false);
       }
-
-      clearCart();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al confirmar venta");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [cart, clearCart]);
+    },
+    [cart, clearCart]
+  );
 
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
 

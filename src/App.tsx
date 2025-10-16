@@ -3,53 +3,80 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import POS from './pages/POS';
 import Productos from './pages/Productos';
+import Clientes from './pages/Clientes';
+import Caja from './pages/Caja';
 import Reportes from './pages/Reportes';
+import Login from './components/Login';
+import { useAuth } from './hooks/useAuth';
+
+// Screen configuration
+const SCREENS = {
+  pos: {
+    component: POS,
+    title: 'Sistema POS - Punto de Venta'
+  },
+  productos: {
+    component: Productos,
+    title: 'Sistema POS - Gestión de Productos'
+  },
+  clientes: {
+    component: Clientes,
+    title: 'Sistema POS - Gestión de Clientes'
+  },
+  caja: {
+    component: Caja,
+    title: 'Sistema POS - Control de Caja'
+  },
+  reportes: {
+    component: Reportes,
+    title: 'Sistema POS - Reportes de Ventas'
+  }
+} as const;
+
+type ScreenKey = keyof typeof SCREENS;
 
 const App: React.FC = () => {
-  const [currentScreen, setCurrentScreen] = useState('pos');
+  const { user, loading } = useAuth();
+  const [currentScreen, setCurrentScreen] = useState<ScreenKey>('pos');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'pos':
-        return <POS />;
-      case 'productos':
-        return <Productos />;
-      case 'reportes':
-        return <Reportes />;
-      default:
-        return <POS />;
-    }
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
-  const getTitle = () => {
-    switch (currentScreen) {
-      case 'pos':
-        return 'Sistema POS - Punto de Venta';
-      case 'productos':
-        return 'Sistema POS - Gestión de Productos';
-      case 'reportes':
-        return 'Sistema POS - Reportes de Ventas';
-      default:
-        return 'Sistema POS';
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#181818] flex items-center justify-center">
+        <div className="text-white">Cargando...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  const currentScreenConfig = SCREENS[currentScreen];
+  const CurrentComponent = currentScreenConfig.component;
 
   return (
     <div className="min-h-screen bg-dark-bg flex">
       <Sidebar
         currentScreen={currentScreen}
-        onScreenChange={setCurrentScreen}
+        onScreenChange={(screen: string) => setCurrentScreen(screen as ScreenKey)}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <div className="flex-1 flex flex-col md:ml-64">
+
+      <div className="flex-1 flex flex-col bg-[#181818] md:ml-14">
         <Header
-          title={getTitle()}
+          title={currentScreenConfig.title}
+          onMenuClick={toggleSidebar}
         />
-        <div className="pt-16">
-          {renderScreen()}
-        </div>
+
+        <main className="pt-12 md:pt-12 flex-1">
+          <CurrentComponent />
+        </main>
       </div>
     </div>
   );

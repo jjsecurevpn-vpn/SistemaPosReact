@@ -1,21 +1,46 @@
 import React, { useState } from 'react';
 import { useProducts } from '../hooks/useProducts';
+import { useAuth } from '../hooks/useAuth';
+import Modal from '../components/Modal';
 import type { Product } from '../utils/api';
+import { Plus, Search, Edit2, Trash2, FileText, StickyNote } from 'lucide-react';
 
 const Productos: React.FC = () => {
   const { products, loading, error, addProduct, editProduct, removeProduct } = useProducts();
+  const { isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
     precio: '',
     stock: '',
+    descripcion: '',
+    notas: '',
   });
+  const [modalContent, setModalContent] = useState<{ title: string; content: string } | null>(null);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   const resetForm = () => {
-    setFormData({ nombre: '', precio: '', stock: '' });
+    setFormData({ nombre: '', precio: '', stock: '', descripcion: '', notas: '' });
     setIsEditing(false);
     setEditingProduct(null);
+    setIsFormModalOpen(false);
+  };
+
+  const openFormModal = (product?: Product) => {
+    if (product) {
+      setIsEditing(true);
+      setEditingProduct(product);
+      setFormData({
+        nombre: product.nombre,
+        precio: product.precio.toString(),
+        stock: product.stock.toString(),
+        descripcion: product.descripcion || '',
+        notas: product.notas || '',
+      });
+    }
+    setIsFormModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,6 +59,8 @@ const Productos: React.FC = () => {
           nombre: formData.nombre,
           precio,
           stock,
+          descripcion: formData.descripcion,
+          notas: formData.notas,
         });
         alert('Producto actualizado exitosamente');
       } else {
@@ -41,6 +68,8 @@ const Productos: React.FC = () => {
           nombre: formData.nombre,
           precio,
           stock,
+          descripcion: formData.descripcion,
+          notas: formData.notas,
         });
         alert('Producto creado exitosamente');
       }
@@ -48,16 +77,6 @@ const Productos: React.FC = () => {
     } catch {
       // Error is handled in the hook
     }
-  };
-
-  const handleEdit = (product: Product) => {
-    setIsEditing(true);
-    setEditingProduct(product);
-    setFormData({
-      nombre: product.nombre,
-      precio: product.precio.toString(),
-      stock: product.stock.toString(),
-    });
   };
 
   const handleDelete = async (id: number) => {
@@ -71,115 +90,379 @@ const Productos: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-2 md:p-4 max-w-full mx-auto text-dark-text">
-      <h2 className="text-xl md:text-2xl font-bold mb-4 text-dark-text">Gestión de Productos</h2>
-      {error && <div className="text-red-400 mb-4 text-sm md:text-base bg-red-900/20 border border-red-800/50 p-3 rounded-lg backdrop-blur-glass">{error}</div>}
+  const openModal = (title: string, content: string) => {
+    setModalContent({ title, content });
+  };
 
-      <div className="mb-6">
-        <h3 className="text-lg md:text-xl font-semibold mb-2 text-dark-text">
-          {isEditing ? 'Editar Producto' : 'Agregar Nuevo Producto'}
-        </h3>
-        <form onSubmit={handleSubmit} className="bg-glass border border-dark-border p-6 rounded-lg backdrop-blur-glass shadow-xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  const closeModal = () => {
+    setModalContent(null);
+  };
+
+  // Calcular estadísticas
+  const totalStockValue = products.reduce((total, product) => total + (product.precio * product.stock), 0);
+  const outOfStockCount = products.filter(product => product.stock === 0).length;
+  const lowStockCount = products.filter(product => product.stock > 0 && product.stock < 5).length;
+  const totalProducts = products.length;
+
+  const filteredProducts = products.filter(p =>
+    p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+    p.descripcion?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="h-full bg-[#181818]">
+      <div className="p-4 md:p-6 max-w-[1800px] mx-auto">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-900/20 border border-red-800/50 text-red-400 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-neutral-200 mb-2">Gestión de Productos</h1>
+            <p className="text-neutral-400">Administra tu inventario</p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => openFormModal()}
+              className="flex items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800 transition-all"
+            >
+              <Plus size={16} />
+              <span>Nuevo Producto</span>
+            </button>
+          )}
+        </div>
+
+        {/* Estadísticas */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 hover:border-neutral-700 transition-colors">
+            <div className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-1">Valor Total</div>
+            <p className="text-xl md:text-2xl font-bold text-neutral-200">
+              ${totalStockValue.toFixed(2)}
+            </p>
+          </div>
+
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 hover:border-neutral-700 transition-colors">
+            <div className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-1">Total Productos</div>
+            <p className="text-xl md:text-2xl font-bold text-blue-400">{totalProducts}</p>
+          </div>
+
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 hover:border-neutral-700 transition-colors">
+            <div className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-1">Sin Stock</div>
+            <p className="text-xl md:text-2xl font-bold text-red-400">{outOfStockCount}</p>
+          </div>
+
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 hover:border-neutral-700 transition-colors">
+            <div className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-1">Stock Bajo</div>
+            <p className="text-xl md:text-2xl font-bold text-yellow-400">{lowStockCount}</p>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" size={20} />
+            <input
+              type="text"
+              placeholder="Buscar productos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Products Table/Cards */}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-neutral-400">Cargando productos...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-neutral-800/50 border-b border-neutral-800">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+                        Producto
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+                        Precio
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+                        Stock
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+                        Info
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {filteredProducts.map(product => (
+                      <tr key={product.id} className="hover:bg-neutral-800/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-neutral-200">{product.nombre}</div>
+                          {product.descripcion && (
+                            <div className="text-sm text-neutral-500 mt-1 truncate max-w-xs">
+                              {product.descripcion}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-green-400 font-semibold">${product.precio}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            product.stock === 0
+                              ? 'bg-red-900/50 text-red-400'
+                              : product.stock < 5
+                              ? 'bg-yellow-900/50 text-yellow-400'
+                              : 'bg-green-900/50 text-green-400'
+                          }`}>
+                            {product.stock} unidades
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            {product.descripcion && (
+                              <button
+                                onClick={() => openModal('Descripción', product.descripcion!)}
+                                className="text-neutral-400 hover:text-blue-400 transition-colors"
+                                title="Ver descripción"
+                              >
+                                <FileText size={18} />
+                              </button>
+                            )}
+                            {product.notas && (
+                              <button
+                                onClick={() => openModal('Notas', product.notas!)}
+                                className="text-neutral-400 hover:text-blue-400 transition-colors"
+                                title="Ver notas"
+                              >
+                                <StickyNote size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => openFormModal(product)}
+                                  className="p-2 text-neutral-400 hover:text-blue-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit2 size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(product.id)}
+                                  className="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filteredProducts.length === 0 && (
+                <div className="text-center py-12 text-neutral-500">
+                  No se encontraron productos
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {filteredProducts.map(product => (
+                <div key={product.id} className="bg-neutral-900 border border-neutral-800 rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-neutral-200 truncate">{product.nombre}</h3>
+                      {product.descripcion && (
+                        <p className="text-sm text-neutral-500 mt-1 truncate">{product.descripcion}</p>
+                      )}
+                    </div>
+                    <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      product.stock === 0
+                        ? 'bg-red-900/50 text-red-400'
+                        : product.stock < 5
+                        ? 'bg-yellow-900/50 text-yellow-400'
+                        : 'bg-green-900/50 text-green-400'
+                    }`}>
+                      {product.stock}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-lg font-bold text-green-400">${product.precio}</span>
+                    <div className="flex items-center gap-2">
+                      {product.descripcion && (
+                        <button
+                          onClick={() => openModal('Descripción', product.descripcion!)}
+                          className="p-2 text-neutral-400 hover:text-blue-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                        >
+                          <FileText size={18} />
+                        </button>
+                      )}
+                      {product.notas && (
+                        <button
+                          onClick={() => openModal('Notas', product.notas!)}
+                          className="p-2 text-neutral-400 hover:text-blue-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                        >
+                          <StickyNote size={18} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {isAdmin && (
+                      <>
+                        <button
+                          onClick={() => openFormModal(product)}
+                          className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Edit2 size={16} />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Trash2 size={16} />
+                          <span>Eliminar</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {filteredProducts.length === 0 && (
+                <div className="text-center py-12 text-neutral-500">
+                  No se encontraron productos
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Form Modal */}
+      <Modal
+        isOpen={isFormModalOpen}
+        onClose={resetForm}
+        title={isEditing ? 'Editar Producto' : 'Nuevo Producto'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-300">Nombre</label>
+              <label className="block text-sm font-medium mb-2 text-neutral-300">Nombre *</label>
               <input
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                className="w-full border border-dark-border bg-dark-container text-white p-3 rounded-lg backdrop-blur-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full bg-neutral-900 border border-neutral-800 text-neutral-200 p-3 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-300">Precio</label>
+              <label className="block text-sm font-medium mb-2 text-neutral-300">Precio *</label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.precio}
                 onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
-                className="w-full border border-dark-border bg-dark-container text-white p-3 rounded-lg backdrop-blur-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full bg-neutral-900 border border-neutral-800 text-neutral-200 p-3 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-300">Stock</label>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2 text-neutral-300">Stock *</label>
               <input
                 type="number"
                 value={formData.stock}
                 onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                className="w-full border border-dark-border bg-dark-container text-white p-3 rounded-lg backdrop-blur-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full bg-neutral-900 border border-neutral-800 text-neutral-200 p-3 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-neutral-300">Descripción</label>
+            <textarea
+              value={formData.descripcion}
+              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              className="w-full bg-neutral-900 border border-neutral-800 text-neutral-200 p-3 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+              rows={3}
+              placeholder="Descripción del producto (opcional)"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-neutral-300">Notas</label>
+            <textarea
+              value={formData.notas}
+              onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+              className="w-full bg-neutral-900 border border-neutral-800 text-neutral-200 p-3 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+              rows={3}
+              placeholder="Notas adicionales (opcional)"
+            />
+          </div>
+          <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors backdrop-blur-sm font-semibold"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold"
             >
-              {isEditing ? 'Actualizar' : 'Agregar'}
+              {isEditing ? 'Actualizar' : 'Crear Producto'}
             </button>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg transition-colors backdrop-blur-sm"
-              >
-                Cancelar
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={resetForm}
+              className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
           </div>
         </form>
-      </div>
+      </Modal>
 
-      <div className="overflow-x-auto">
-        <h3 className="text-lg md:text-xl font-semibold mb-2 text-white">Lista de Productos</h3>
-        {loading ? (
-          <div className="bg-dark-gradient border border-dark-border p-8 rounded-lg backdrop-blur-md">
-            <p className="text-center text-gray-400">Cargando...</p>
+      {/* Content Modal */}
+      {modalContent && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closeModal}>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-neutral-200">{modalContent.title}</h3>
+              <button
+                onClick={closeModal}
+                className="text-neutral-400 hover:text-neutral-200 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="text-neutral-300 whitespace-pre-wrap">
+              {modalContent.content}
+            </div>
           </div>
-        ) : (
-          <div className="bg-dark-gradient border border-dark-border rounded-lg overflow-hidden backdrop-blur-md shadow-xl">
-            <table className="w-full min-w-full divide-y divide-dark-border">
-              <thead className="bg-dark-container/50">
-                <tr>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nombre</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Precio</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Stock</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dark-border">
-                {products.map(product => (
-                  <tr key={product.id} className="hover:bg-dark-container/30 transition-colors">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">{product.nombre}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">${product.precio}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{product.stock}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-xs transition-colors backdrop-blur-sm"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs transition-colors backdrop-blur-sm"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

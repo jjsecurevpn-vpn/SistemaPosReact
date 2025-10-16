@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
-import { getTodaySales } from "../utils/api";
+import { getTodaySales, getTodayCreditSales } from "../utils/api";
 
-interface SaleWithProducts {
+export interface SaleWithProducts {
   id: number;
   fecha: string;
   total: number;
@@ -20,8 +20,14 @@ interface SaleWithProducts {
   }[];
 }
 
+export interface CreditSaleWithProducts extends SaleWithProducts {
+  cliente_nombre?: string;
+  estado?: string;
+}
+
 export const useReports = () => {
   const [sales, setSales] = useState<SaleWithProducts[]>([]);
+  const [creditSales, setCreditSales] = useState<CreditSaleWithProducts[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,8 +35,12 @@ export const useReports = () => {
     try {
       setLoading(true);
       setError(null);
-      const todaySales = await getTodaySales();
+      const [todaySales, todayCreditSales] = await Promise.all([
+        getTodaySales(),
+        getTodayCreditSales(),
+      ]);
       setSales(todaySales);
+      setCreditSales(todayCreditSales);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al cargar las ventas"
@@ -46,6 +56,11 @@ export const useReports = () => {
 
   // Cálculos útiles
   const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalCreditSales = creditSales.reduce(
+    (sum, sale) => sum + sale.total,
+    0
+  );
+  const totalAllSales = totalSales + totalCreditSales;
   const totalItems = sales.reduce(
     (sum, sale) =>
       sum +
@@ -55,13 +70,28 @@ export const useReports = () => {
       ),
     0
   );
+  const totalCreditItems = creditSales.reduce(
+    (sum, sale) =>
+      sum +
+      sale.productos.reduce(
+        (itemSum, product) => itemSum + product.cantidad,
+        0
+      ),
+    0
+  );
+  const totalAllItems = totalItems + totalCreditItems;
 
   return {
     sales,
+    creditSales,
     loading,
     error,
     totalSales,
+    totalCreditSales,
+    totalAllSales,
     totalItems,
+    totalCreditItems,
+    totalAllItems,
     loadTodaySales,
     clearError,
   };

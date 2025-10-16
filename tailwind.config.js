@@ -5,7 +5,7 @@ export default {
     extend: {
       colors: {
         dark: {
-          bg: "#0e1117",
+          bg: "#181818",
           container: "rgba(255, 255, 255, 0.03)",
           border: "rgba(255, 255, 255, 0.06)",
           text: "#ffffff",

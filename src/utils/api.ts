@@ -5,6 +5,8 @@ export interface Product {
   nombre: string;
   precio: number;
   stock: number;
+  descripcion?: string;
+  notas?: string;
 }
 
 export interface Sale {
@@ -113,10 +115,62 @@ export const getTodaySales = async (): Promise<
 
   if (error) throw error;
 
+  // Filtrar ventas que NO están al fiado (no existen en ventas_fiadas)
+  const salesData = data || [];
+  const creditSaleIds = new Set();
+
+  // Obtener IDs de ventas al fiado
+  const { data: creditSales } = await supabase
+    .from("ventas_fiadas")
+    .select("venta_id");
+
+  if (creditSales) {
+    creditSales.forEach((cs) => creditSaleIds.add(cs.venta_id));
+  }
+
+  // Filtrar solo ventas normales (no al fiado)
+  const regularSales = salesData.filter((sale) => !creditSaleIds.has(sale.id));
+
   // Transformar los datos para que sean más fáciles de usar
-  return (data || []).map((sale) => ({
+  return regularSales.map((sale) => ({
     ...sale,
     productos: sale.venta_productos.map(
+      (vp: SaleProduct & { productos: Product }) => ({
+        ...vp,
+        producto: vp.productos,
+      })
+    ),
+  }));
+};
+
+// Ventas al fiado
+export const getTodayCreditSales = async (): Promise<
+  (Sale & { productos: (SaleProduct & { producto: Product })[] })[]
+> => {
+  const today = new Date().toISOString().split("T")[0];
+  const { data, error } = await supabase
+    .from("ventas_fiadas")
+    .select(
+      `
+      *,
+      venta:ventas (
+        *,
+        venta_productos (
+          *,
+          productos (*)
+        )
+      )
+    `
+    )
+    .gte("venta.fecha", `${today}T00:00:00`)
+    .lt("venta.fecha", `${today}T23:59:59`);
+
+  if (error) throw error;
+
+  // Transformar los datos para que sean más fáciles de usar
+  return (data || []).map((creditSale) => ({
+    ...creditSale.venta,
+    productos: creditSale.venta.venta_productos.map(
       (vp: SaleProduct & { productos: Product }) => ({
         ...vp,
         producto: vp.productos,
