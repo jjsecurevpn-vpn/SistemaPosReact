@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProducts } from '../hooks/useProducts';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../contexts/NotificationContext';
 import Modal from '../components/Modal';
 import type { Product } from '../utils/api';
-import { Plus, Search, Edit2, Trash2, FileText, StickyNote } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, FileText, StickyNote, Filter, ChevronDown } from 'lucide-react';
 
 const Productos: React.FC = () => {
   const { products, loading, error, addProduct, editProduct, removeProduct } = useProducts();
@@ -22,8 +22,21 @@ const Productos: React.FC = () => {
   const [modalContent, setModalContent] = useState<{ title: string; content: string } | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'low-stock' | 'out-of-stock'>('all');
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const [isConfirmDelete, setIsConfirmDelete] = useState(false);
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isFilterDropdownOpen && !(event.target as Element).closest('.filter-dropdown')) {
+        setIsFilterDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isFilterDropdownOpen]);
 
   const resetForm = () => {
     setFormData({ nombre: '', precio: '', stock: '', descripcion: '', notas: '' });
@@ -120,10 +133,21 @@ const Productos: React.FC = () => {
   const lowStockCount = products.filter(product => product.stock > 0 && product.stock < 5).length;
   const totalProducts = products.length;
 
-  const filteredProducts = products.filter(p =>
-    p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-    p.descripcion?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+                         p.descripcion?.toLowerCase().includes(search.toLowerCase());
+    
+    let matchesStock = true;
+    if (stockFilter === 'in-stock') {
+      matchesStock = p.stock > 0;
+    } else if (stockFilter === 'low-stock') {
+      matchesStock = p.stock > 0 && p.stock < 5;
+    } else if (stockFilter === 'out-of-stock') {
+      matchesStock = p.stock === 0;
+    }
+    
+    return matchesSearch && matchesStock;
+  });
 
   return (
     <div className="h-full bg-[#181818]">
@@ -186,8 +210,77 @@ const Productos: React.FC = () => {
               placeholder="Buscar productos..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-12 py-3 bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
+            <button
+              onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+              className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors ${
+                stockFilter !== 'all' ? 'text-blue-400' : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+            >
+              <Filter size={18} />
+            </button>
+            
+            {/* Filter Dropdown */}
+            {isFilterDropdownOpen && (
+              <div className="filter-dropdown absolute right-0 top-full mt-1 w-48 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg z-50">
+                <div className="p-2">
+                  <div className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-2 px-2">Filtrar por stock</div>
+                  <button
+                    onClick={() => {
+                      setStockFilter('all');
+                      setIsFilterDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm rounded transition-colors ${
+                      stockFilter === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-neutral-300 hover:bg-neutral-700'
+                    }`}
+                  >
+                    Todos ({totalProducts})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setStockFilter('in-stock');
+                      setIsFilterDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm rounded transition-colors ${
+                      stockFilter === 'in-stock'
+                        ? 'bg-green-600 text-white'
+                        : 'text-neutral-300 hover:bg-neutral-700'
+                    }`}
+                  >
+                    Con Stock ({totalProducts - outOfStockCount - lowStockCount})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setStockFilter('low-stock');
+                      setIsFilterDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm rounded transition-colors ${
+                      stockFilter === 'low-stock'
+                        ? 'bg-yellow-600 text-white'
+                        : 'text-neutral-300 hover:bg-neutral-700'
+                    }`}
+                  >
+                    Stock Bajo ({lowStockCount})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setStockFilter('out-of-stock');
+                      setIsFilterDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm rounded transition-colors ${
+                      stockFilter === 'out-of-stock'
+                        ? 'bg-red-600 text-white'
+                        : 'text-neutral-300 hover:bg-neutral-700'
+                    }`}
+                  >
+                    Sin Stock ({outOfStockCount})
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

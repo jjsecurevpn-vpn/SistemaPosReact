@@ -5,7 +5,7 @@ import { useClientes } from '../hooks/useClientes';
 import { useNotification } from '../hooks/useNotification';
 import Notification from '../components/Notification';
 import type { Cliente } from '../hooks/useClientes';
-import { Search, ShoppingCart, CreditCard, Banknote, ChevronDown, Plus, Minus, X } from 'lucide-react';
+import { Search, ShoppingCart, CreditCard, Banknote, ChevronDown, Plus, X } from 'lucide-react';
 
 const POS: React.FC = () => {
   const [search, setSearch] = useState('');
