@@ -6,6 +6,7 @@ import Productos from './pages/Productos';
 import Clientes from './pages/Clientes';
 import Caja from './pages/Caja';
 import Reportes from './pages/Reportes';
+import Dashboard from './pages/Dashboard';
 import Login from './components/Login';
 import Notification from './components/Notification';
 import { useAuth } from './hooks/useAuth';
@@ -13,6 +14,10 @@ import { NotificationProvider, useNotification } from './contexts/NotificationCo
 
 // Screen configuration
 const SCREENS = {
+  dashboard: {
+    component: Dashboard,
+    title: 'Sistema POS - Dashboard'
+  },
   pos: {
     component: POS,
     title: 'Sistema POS - Punto de Venta'
@@ -40,7 +45,7 @@ type ScreenKey = keyof typeof SCREENS;
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const { notification, hideNotification } = useNotification();
-  const [currentScreen, setCurrentScreen] = useState<ScreenKey>('pos');
+  const [currentScreen, setCurrentScreen] = useState<ScreenKey>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {

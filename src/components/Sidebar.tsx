@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MdShoppingCart, MdInventory2, MdBarChart, MdAccountBalance, MdPeople } from 'react-icons/md';
+import { MdShoppingCart, MdInventory2, MdBarChart, MdAccountBalance, MdPeople, MdAnalytics } from 'react-icons/md';
 
 interface SidebarProps {
   currentScreen: string;
@@ -18,11 +18,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onScreenChange, isOpen
   const [isHovered, setIsHovered] = useState(false);
 
   const menuItems: MenuItem[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: MdBarChart },
     { id: 'pos', label: 'Punto de Venta', icon: MdShoppingCart },
     { id: 'productos', label: 'Productos', icon: MdInventory2 },
     { id: 'clientes', label: 'Clientes', icon: MdPeople },
     { id: 'caja', label: 'Caja', icon: MdAccountBalance },
-    { id: 'reportes', label: 'Reportes', icon: MdBarChart },
+    { id: 'reportes', label: 'Reportes', icon: MdAnalytics },
   ];
 
   // Determinar si el sidebar debe estar expandido
