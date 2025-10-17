@@ -3,7 +3,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import POS from './pages/POS';
 import Productos from './pages/Productos';
-import Clientes from './pages/Clientes';
+import Clientes from './pages/Clientes/index';
 import Caja from './pages/Caja';
 import Reportes from './pages/Reportes';
 import Dashboard from './pages/Dashboard';
@@ -68,7 +68,7 @@ const AppContent: React.FC = () => {
   const CurrentComponent = currentScreenConfig.component;
 
   return (
-    <div className="min-h-screen bg-dark-bg flex">
+    <div className="h-screen bg-dark-bg flex overflow-hidden">
       <Sidebar
         currentScreen={currentScreen}
         onScreenChange={(screen: string) => setCurrentScreen(screen as ScreenKey)}
@@ -82,7 +82,7 @@ const AppContent: React.FC = () => {
           onMenuClick={toggleSidebar}
         />
 
-        <main className="pt-12 md:pt-12 flex-1">
+        <main className="pt-12 md:pt-12 flex-1 overflow-y-auto">
           <CurrentComponent />
         </main>
       </div>

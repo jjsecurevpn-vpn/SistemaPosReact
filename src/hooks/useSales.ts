@@ -49,7 +49,12 @@ export const useSales = () => {
   }, []);
 
   const confirmSale = useCallback(
-    async (clienteId?: number, fechaVencimiento?: string, notas?: string) => {
+    async (
+      clienteId?: number,
+      fechaVencimiento?: string,
+      notas?: string,
+      notasFiado?: string
+    ) => {
       if (cart.length === 0) return;
       setLoading(true);
       setError(null);
@@ -88,7 +93,7 @@ export const useSales = () => {
                 cliente_id: clienteId,
                 fecha_vencimiento: fechaVencimiento,
                 estado: "pendiente",
-                notas,
+                notas: notasFiado,
               },
             ]);
 
@@ -103,7 +108,7 @@ export const useSales = () => {
             descripcion: `Venta al fiado #${sale.id}`,
             monto: total,
             categoria: "ventas_fiadas",
-            notas: `Cliente ID: ${clienteId}. ${notas || ""}`,
+            notas: `Cliente ID: ${clienteId}. ${notasFiado || ""}`,
           };
 
           console.log(

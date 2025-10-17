@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useCaja } from '../hooks/useCaja';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../contexts/NotificationContext';
+import { formatDate, formatCurrency } from '../utils/api';
 import Modal from '../components/Modal';
 import { MdAdd, MdTrendingUp, MdTrendingDown, MdAccountBalanceWallet, MdDelete } from 'react-icons/md';
 import type { MovimientoCaja } from '../hooks/useCaja';
@@ -96,24 +97,6 @@ const Caja: React.FC = () => {
   const cancelDelete = () => {
     setIsConfirmDelete(false);
     setMovementToDelete(null);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'ARS'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   if (loading && movimientos.length === 0) {
@@ -244,13 +227,24 @@ const Caja: React.FC = () => {
                         {movimiento.tipo === 'ingreso' || movimiento.tipo === 'pago_fiado' ? '+' :
                          movimiento.tipo === 'gasto' ? '-' : '~'}{formatCurrency(movimiento.monto)}
                       </span>
-                      <button
-                        onClick={() => handleDelete(movimiento.id)}
-                        className="rounded-md border border-red-700 bg-red-900/20 p-1.5 text-red-400 hover:border-red-500 hover:bg-red-800/30 hover:text-red-300 transition-all"
-                        title="Eliminar movimiento"
-                      >
-                        <MdDelete size={14} />
-                      </button>
+                        {isAdmin ? (
+                          <button
+                            onClick={() => handleDelete(movimiento.id)}
+                            className="rounded-md border border-red-700 bg-red-900/20 p-1.5 text-red-400 hover:border-red-500 hover:bg-red-800/30 hover:text-red-300 transition-all"
+                            title="Eliminar movimiento"
+                          >
+                            <MdDelete size={14} />
+                          </button>
+                        ) : (
+                          <div className="text-neutral-500 p-1.5" title="Sin permisos">
+                            <span className="inline-flex items-center justify-center w-6 h-6 bg-neutral-800 rounded-full">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                                <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
+                            </span>
+                          </div>
+                        )}
                     </div>
                   </div>
                   {movimiento.notas && (
@@ -325,13 +319,24 @@ const Caja: React.FC = () => {
                      movimiento.tipo === 'gasto' ? '-' : '~'}{formatCurrency(movimiento.monto)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => handleDelete(movimiento.id)}
-                      className="rounded-md border border-red-700 bg-red-900/20 p-1.5 text-red-400 hover:border-red-500 hover:bg-red-800/30 hover:text-red-300 transition-all"
-                      title="Eliminar movimiento"
-                    >
-                      <MdDelete size={16} />
-                    </button>
+                    {isAdmin ? (
+                      <button
+                        onClick={() => handleDelete(movimiento.id)}
+                        className="rounded-md border border-red-700 bg-red-900/20 p-1.5 text-red-400 hover:border-red-500 hover:bg-red-800/30 hover:text-red-300 transition-all"
+                        title="Eliminar movimiento"
+                      >
+                        <MdDelete size={16} />
+                      </button>
+                    ) : (
+                      <div className="text-neutral-500 p-1.5" title="Sin permisos">
+                        <span className="inline-flex items-center justify-center w-8 h-8 bg-neutral-800 rounded-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                            <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </span>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

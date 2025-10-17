@@ -14,3 +14,10 @@ html {
   -ms-overflow-style: none; /* IE and Edge */
 }
 
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+

@@ -149,7 +149,11 @@ export const getTodaySales = async (): Promise<
 
 // Ventas al fiado
 export const getTodayCreditSales = async (): Promise<
-  (Sale & { productos: (SaleProduct & { producto: Product })[] })[]
+  (Sale & {
+    productos: (SaleProduct & { producto: Product })[];
+    cliente_nombre: string;
+    estado: string;
+  })[]
 > => {
   const today = new Date().toISOString().split("T")[0];
   const { data, error } = await supabase
@@ -157,6 +161,7 @@ export const getTodayCreditSales = async (): Promise<
     .select(
       `
       *,
+      cliente:clientes (nombre, apellido),
       venta:ventas (
         *,
         venta_productos (
@@ -174,6 +179,10 @@ export const getTodayCreditSales = async (): Promise<
   // Transformar los datos para que sean más fáciles de usar
   return (data || []).map((creditSale) => ({
     ...creditSale.venta,
+    cliente_nombre: `${creditSale.cliente.nombre} ${
+      creditSale.cliente.apellido || ""
+    }`.trim(),
+    estado: creditSale.estado,
     productos: creditSale.venta.venta_productos.map(
       (vp: SaleProduct & { productos: Product }) => ({
         ...vp,
@@ -181,4 +190,46 @@ export const getTodayCreditSales = async (): Promise<
       })
     ),
   }));
+};
+
+// Utility functions
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 2,
+  }).format(amount);
+};
+
+export const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("es-AR", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+};
+
+export const formatTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+};
+
+export const formatDateTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("es-AR", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
 };

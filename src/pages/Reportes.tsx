@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useReports } from '../hooks/useReports';
+import { formatDate, formatTime } from '../utils/api';
 import type { SaleWithProducts, CreditSaleWithProducts } from '../hooks/useReports';
 
 const Reportes: React.FC = () => {
@@ -19,25 +20,6 @@ const Reportes: React.FC = () => {
   useEffect(() => {
     loadTodaySales();
   }, [loadTodaySales]);
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
 
   const formatDateKey = (dateString: string) => {
     const date = new Date(dateString);
@@ -137,11 +119,12 @@ const Reportes: React.FC = () => {
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-neutral-200 mb-2">Reportes de Ventas</h1>
           <p className="text-sm md:text-base text-neutral-400">
-            {new Date().toLocaleDateString('es-ES', {
+            {new Date().toLocaleDateString('es-AR', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
-              day: 'numeric'
+              day: 'numeric',
+              timeZone: 'America/Argentina/Buenos_Aires'
             })}
           </p>
         </div>
@@ -356,7 +339,7 @@ const Reportes: React.FC = () => {
                                         <p className="text-yellow-400">Pendiente: {formatCurrency(sale.total)}</p>
                                       )}
                                     </div>
-                                    {sale.notas && (
+                                    {sale.notas && !sale.notas.includes('Venta al fiado a') && (
                                       <div className="mt-3 p-3 bg-neutral-800/50 border border-neutral-700 rounded-lg">
                                         <h6 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">
                                           Comentarios

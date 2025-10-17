@@ -19,8 +19,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
     xl: 'max-w-4xl'
   };
 
+  const containerClasses = "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[10000] p-4";
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+    <div className={containerClasses}>
       <div className={`bg-neutral-900 border border-neutral-700 rounded-lg w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col shadow-2xl`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-700">

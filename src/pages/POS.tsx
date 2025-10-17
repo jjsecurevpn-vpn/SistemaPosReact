@@ -45,14 +45,16 @@ const POS: React.FC = () => {
         return;
       }
 
-      const notasCombinadas = ventaAlFiado && clienteSeleccionado
-        ? `${ventaNotas ? ventaNotas + ' - ' : ''}Venta al fiado a ${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido}`
-        : ventaNotas;
+      const notasVenta = ventaNotas || undefined;
+      const notasFiado = ventaAlFiado && clienteSeleccionado
+        ? `${ventaNotas ? ventaNotas + ' - ' : ''}Venta al fiado a ${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}`
+        : undefined;
 
       await confirmSale(
         ventaAlFiado ? clienteSeleccionado?.id : undefined,
         undefined,
-        notasCombinadas || undefined
+        notasVenta,
+        notasFiado
       );
 
       setVentaNotas('');
@@ -77,52 +79,28 @@ const POS: React.FC = () => {
         </div>
       )}
 
-      {/* Mobile: Search Header */}
-      <div className="md:hidden border-b border-neutral-800 bg-neutral-900 p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" size={18} />
-          <input
-            type="text"
-            placeholder="Escribe para buscar productos..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-9 py-2 text-sm border border-neutral-800 bg-neutral-900 text-neutral-200 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Main Content - Products and Cart Side by Side */}
       <div className="flex-1 flex overflow-hidden">
         {/* Products Section - Left */}
         <div className="flex-1 flex flex-col border-r border-neutral-800 overflow-hidden">
-          {/* Desktop Search */}
-          <div className="hidden md:block p-4 border-b border-neutral-800 bg-neutral-900">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" size={20} />
-              <input
-                type="text"
-                placeholder="Escribe para buscar productos..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 border border-neutral-800 bg-[#181818] text-neutral-200 rounded-lg placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
+          {/* Search */}
+          <div className="border-b border-neutral-800 bg-neutral-900 relative">
+            <Search className="absolute left-3 md:left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 z-10" size={18} />
+            <input
+              type="text"
+              placeholder="Escribe para buscar productos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-9 py-4 text-sm border-0 bg-neutral-900 md:bg-[#181818] text-neutral-200 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors z-10"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
 
           {/* Products Grid */}
@@ -189,13 +167,14 @@ const POS: React.FC = () => {
         {/* Cart Section - Right (Desktop) */}
         <div className="hidden md:flex md:w-80 lg:w-96 flex-col bg-neutral-900 h-full">
           {/* Cart Header */}
-          <div className="p-3 border-b border-neutral-800 flex-shrink-0">
+                    {/* Cart Header */}
+          <div className="py-3.5 border-b border-neutral-800 flex-shrink-0">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-neutral-200 flex items-center gap-2">
+              <h3 className="font-semibold text-neutral-200 flex items-center gap-2 pl-3">
                 <ShoppingCart size={18} />
                 Carrito
               </h3>
-              <span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-1 rounded-full">
+              <span className="text-xs text-neutral-400 pr-3">
                 {cart.length}
               </span>
             </div>
@@ -235,10 +214,9 @@ const POS: React.FC = () => {
           </div>
 
           {/* Checkout Section - Fixed at bottom with minimum height */}
-          <div className="border-t border-neutral-800 bg-neutral-900 flex-shrink-0 min-h-[180px]">
+          <div className="border-t border-neutral-800 bg-neutral-900 flex-shrink-0 min-h-[120px] sticky bottom-0">
             {/* Payment Type */}
             <div className="px-3 py-2 border-b border-neutral-800">
-              <label className="block text-xs font-medium text-neutral-400 mb-2">Tipo de pago</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => {
@@ -278,24 +256,59 @@ const POS: React.FC = () => {
                     className="w-full flex items-center justify-between px-2.5 py-2 bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-lg text-xs hover:border-neutral-600 transition-all"
                   >
                     <span className={clienteSeleccionado ? 'text-neutral-200' : 'text-neutral-500'}>
-                      {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido}` : 'Seleccionar...'}
+                      {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}` : 'Seleccionar...'}
                     </span>
                     <ChevronDown size={14} className={`transition-transform ${clienteDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {clienteDropdownOpen && (
-                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg z-50 max-h-40 overflow-auto">
-                      {clientes.map(cliente => (
-                        <button
-                          key={cliente.id}
-                          onClick={() => {
-                            setClienteSeleccionado(cliente);
-                            setClienteDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-neutral-700 transition-colors"
-                        >
-                          {cliente.nombre} {cliente.apellido}
-                        </button>
-                      ))}
+                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1a] border border-neutral-700/50 rounded-xl shadow-2xl z-50 max-h-56 overflow-auto">
+                      {clientes.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-neutral-400 text-sm">
+                          <CreditCard className="mx-auto mb-2 opacity-50" size={24} />
+                          No hay clientes registrados
+                        </div>
+                      ) : (
+                        clientes.map(cliente => (
+                          <button
+                            key={cliente.id}
+                            onClick={() => {
+                              setClienteSeleccionado(cliente);
+                              setClienteDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-4 hover:bg-neutral-800/50 transition-all duration-200 border-b border-neutral-800/30 last:border-b-0 group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                                <span className="text-white text-sm font-bold">
+                                  {cliente.nombre.charAt(0)}{cliente.apellido?.charAt(0) || ''}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-neutral-100 text-sm mb-1 group-hover:text-emerald-400 transition-colors truncate">
+                                  {cliente.nombre} {cliente.apellido || ''}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-neutral-400">
+                                  {cliente.telefono && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="w-1 h-1 bg-neutral-500 rounded-full"></span>
+                                      {cliente.telefono}
+                                    </span>
+                                  )}
+                                  {cliente.email && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="w-1 h-1 bg-neutral-500 rounded-full"></span>
+                                      {cliente.email}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <ChevronDown size={16} className="rotate-[-90deg]" />
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
@@ -304,7 +317,6 @@ const POS: React.FC = () => {
 
             {/* Notes */}
             <div className="px-3 py-2 border-b border-neutral-800">
-              <label className="block text-xs font-medium text-neutral-400 mb-2">Notas</label>
               <textarea
                 value={ventaNotas}
                 onChange={(e) => setVentaNotas(e.target.value)}
@@ -408,28 +420,74 @@ const POS: React.FC = () => {
                 className="w-full flex items-center justify-between px-2 py-1.5 bg-neutral-800 border border-neutral-700 text-neutral-200 rounded text-xs"
               >
                 <span className={clienteSeleccionado ? 'text-neutral-200' : 'text-neutral-500'}>
-                  {clienteSeleccionado ? `${clienteSeleccionado.nombre}` : 'Cliente...'}
+                  {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}` : 'Cliente...'}
                 </span>
                 <ChevronDown size={14} />
               </button>
               {clienteDropdownOpen && (
-                <div className="absolute bottom-full left-3 right-3 mb-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg z-50 max-h-32 overflow-auto">
-                  {clientes.map(cliente => (
-                    <button
-                      key={cliente.id}
-                      onClick={() => {
-                        setClienteSeleccionado(cliente);
-                        setClienteDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-neutral-700"
-                    >
-                      {cliente.nombre} {cliente.apellido}
-                    </button>
-                  ))}
+                <div className="absolute bottom-full left-4 right-4 mb-2 bg-[#1a1a1a] border border-neutral-700/50 rounded-xl shadow-2xl z-50 max-h-56 overflow-auto">
+                  {clientes.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-neutral-400 text-sm">
+                      <CreditCard className="mx-auto mb-2 opacity-50" size={24} />
+                      No hay clientes registrados
+                    </div>
+                  ) : (
+                    clientes.map(cliente => (
+                      <button
+                        key={cliente.id}
+                        onClick={() => {
+                          setClienteSeleccionado(cliente);
+                          setClienteDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-4 hover:bg-neutral-800/50 transition-all duration-200 border-b border-neutral-800/30 last:border-b-0 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <span className="text-white text-sm font-bold">
+                              {cliente.nombre.charAt(0)}{cliente.apellido?.charAt(0) || ''}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-neutral-100 text-sm mb-1 group-hover:text-emerald-400 transition-colors truncate">
+                              {cliente.nombre} {cliente.apellido || ''}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-neutral-400">
+                              {cliente.telefono && (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-1 h-1 bg-neutral-500 rounded-full"></span>
+                                  {cliente.telefono}
+                                </span>
+                              )}
+                              {cliente.email && (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-1 h-1 bg-neutral-500 rounded-full"></span>
+                                  {cliente.email}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ChevronDown size={16} className="rotate-[-90deg]" />
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
           )}
+
+          {/* Notes Mobile */}
+          <div className="mb-2">
+            <textarea
+              value={ventaNotas}
+              onChange={(e) => setVentaNotas(e.target.value)}
+              placeholder="Comentarios..."
+              rows={2}
+              className="w-full px-2 py-1.5 bg-neutral-800 border border-neutral-700 text-neutral-200 text-xs rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
           <button
             onClick={handleConfirmSale}

@@ -38,6 +38,18 @@ const Productos: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isFilterDropdownOpen]);
 
+  useEffect(() => {
+    const hasModal = isFormModalOpen || modalContent || isConfirmDelete;
+    if (hasModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFormModalOpen, modalContent, isConfirmDelete]);
+
   const resetForm = () => {
     setFormData({ nombre: '', precio: '', stock: '', descripcion: '', notas: '' });
     setIsEditing(false);
@@ -366,7 +378,7 @@ const Productos: React.FC = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            {isAdmin && (
+                            {isAdmin ? (
                               <>
                                 <button
                                   onClick={() => openFormModal(product)}
@@ -383,6 +395,15 @@ const Productos: React.FC = () => {
                                   <Trash2 size={18} />
                                 </button>
                               </>
+                            ) : (
+                              <div title="Sin permisos" className="text-neutral-500 p-2">
+                                <span className="inline-flex items-center justify-center w-6 h-6 bg-neutral-800 rounded-full">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                                    <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                  </svg>
+                                </span>
+                              </div>
                             )}
                           </div>
                         </td>
@@ -443,7 +464,7 @@ const Productos: React.FC = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    {isAdmin && (
+                    {isAdmin ? (
                       <>
                         <button
                           onClick={() => openFormModal(product)}
@@ -460,6 +481,15 @@ const Productos: React.FC = () => {
                           <span>Eliminar</span>
                         </button>
                       </>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-neutral-500 p-2">
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-neutral-800 rounded-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                            <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -555,7 +585,7 @@ const Productos: React.FC = () => {
 
       {/* Content Modal */}
       {modalContent && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closeModal}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeModal}>
           <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-neutral-200">{modalContent.title}</h3>

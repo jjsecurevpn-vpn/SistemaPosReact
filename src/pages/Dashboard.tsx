@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDashboard } from '../hooks/useDashboard';
+import { formatTime, formatDate } from '../utils/api';
 import {
   TrendingUp,
   TrendingDown,
@@ -13,6 +14,8 @@ import {
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   const {
     stats,
     productosVendidos,
@@ -21,10 +24,19 @@ const Dashboard: React.FC = () => {
     error
   } = useDashboard();
 
+  // Actualizar la hora cada segundo
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'ARS'
     }).format(amount);
   };
 
@@ -55,8 +67,20 @@ const Dashboard: React.FC = () => {
       <div className="p-6 md:p-8 max-w-[1800px] mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-200 mb-2">Dashboard</h1>
-          <p className="text-neutral-400">Resumen general de tu negocio</p>
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-neutral-200 mb-2">Dashboard</h1>
+              <p className="text-neutral-400">Resumen general de tu negocio</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-mono font-bold text-blue-400">
+                {formatTime(currentTime.toISOString())}
+              </div>
+              <div className="text-sm text-neutral-500">
+                {formatDate(currentTime.toISOString())}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Estadísticas Principales - Destacadas */}

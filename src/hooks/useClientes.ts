@@ -10,6 +10,7 @@ export interface Cliente {
   direccion?: string;
   fecha_registro: string;
   notas?: string;
+  deuda?: number;
 }
 
 export interface VentaFiada {
@@ -52,12 +53,34 @@ export const useClientes = () => {
     try {
       const { data, error } = await supabase
         .from("clientes")
-        .select("*")
+        .select(
+          `
+          *,
+          ventas_fiadas (
+            estado,
+            venta:ventas (
+              total
+            )
+          )
+        `
+        )
         .order("nombre");
 
       if (error) throw error;
 
-      setClientes(data || []);
+      // Calcular deuda total por cliente
+      const clientesConDeuda = (data || []).map((cliente) => ({
+        ...cliente,
+        deuda:
+          cliente.ventas_fiadas
+            ?.filter((vf: any) => vf.estado === "pendiente")
+            .reduce(
+              (sum: number, vf: any) => sum + (vf.venta?.total || 0),
+              0
+            ) || 0,
+      }));
+
+      setClientes(clientesConDeuda);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar clientes");
     } finally {
