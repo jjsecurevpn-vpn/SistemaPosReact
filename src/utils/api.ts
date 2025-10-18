@@ -138,7 +138,7 @@ export const getTodaySales = async (): Promise<
   // Transformar los datos para que sean más fáciles de usar
   return regularSales.map((sale) => ({
     ...sale,
-    productos: sale.venta_productos.map(
+    productos: (sale.venta_productos || []).map(
       (vp: SaleProduct & { productos: Product }) => ({
         ...vp,
         producto: vp.productos,
@@ -177,13 +177,17 @@ export const getTodayCreditSales = async (): Promise<
   if (error) throw error;
 
   // Transformar los datos para que sean más fáciles de usar
-  return (data || []).map((creditSale) => ({
+  const rows = data || [];
+  // Filter out any entries without a valid venta to avoid runtime errors
+  const validRows = rows.filter((r: any) => r && r.venta);
+
+  return validRows.map((creditSale: any) => ({
     ...creditSale.venta,
     cliente_nombre: `${creditSale.cliente.nombre} ${
       creditSale.cliente.apellido || ""
     }`.trim(),
     estado: creditSale.estado,
-    productos: creditSale.venta.venta_productos.map(
+    productos: (creditSale.venta.venta_productos || []).map(
       (vp: SaleProduct & { productos: Product }) => ({
         ...vp,
         producto: vp.productos,

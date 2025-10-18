@@ -65,8 +65,8 @@ export const useReports = () => {
   const totalItems = sales.reduce(
     (sum, sale) =>
       sum +
-      sale.productos.reduce(
-        (itemSum, product) => itemSum + product.cantidad,
+      (sale.productos || []).reduce(
+        (itemSum, product) => itemSum + (product?.cantidad || 0),
         0
       ),
     0
@@ -74,8 +74,8 @@ export const useReports = () => {
   const totalCreditItems = creditSales.reduce(
     (sum, sale) =>
       sum +
-      sale.productos.reduce(
-        (itemSum, product) => itemSum + product.cantidad,
+      (sale.productos || []).reduce(
+        (itemSum, product) => itemSum + (product?.cantidad || 0),
         0
       ),
     0
